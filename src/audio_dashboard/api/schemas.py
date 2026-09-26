@@ -16,7 +16,14 @@ class AnalysisOut(BaseModel):
 class AnalysesOut(BaseModel):
     analyses: list[AnalysisOut] = []
 
+
 class FileOut(BaseModel):
     digest: str
     size_bytes: int
     filename: str
+
+
+class RunIn(BaseModel):
+    analyses: list[str]
+    force: bool = False
+    allow_billing: bool = False
