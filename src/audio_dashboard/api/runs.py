@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from audio_dashboard import registry
+from audio_dashboard import asr, registry
 
 from .files import UPLOAD_DIR
 from .schemas import RunIn
@@ -26,6 +26,17 @@ def create_run(digest: str, body: RunIn):
             detail=(
                 f"Unknown analysis: {', '.join(unknown)}. "
                 "See GET /v1/analyses for valid names."
+            ),
+        )
+    order = registry.resolve(body.analyses)
+    would_bill = "transcript" in order and not asr.is_cached(
+        path, asr.TranscribeConfig()
+    )
+    if would_bill and not body.allow_billing:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "transcript would be billed for this file; set allow_billing to run it."
             ),
         )
 
