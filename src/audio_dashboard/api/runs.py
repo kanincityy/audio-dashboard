@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from audio_dashboard import asr, registry
+from audio_dashboard import asr, audio_io, registry
 
 from .files import UPLOAD_DIR
 from .schemas import RunIn
@@ -39,5 +39,7 @@ def create_run(digest: str, body: RunIn):
                 "transcript would be billed for this file; set allow_billing to run it."
             ),
         )
+    bundle = audio_io.load(path)
+    results = registry.run(bundle, digest, body.analyses, force=body.force)
 
-    return {"digest": digest, "path": str(path)}
+    return {"digest": digest, "path": str(path), "results": results}
