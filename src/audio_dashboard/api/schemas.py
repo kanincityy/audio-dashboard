@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class AnalysisOut(BaseModel):
@@ -24,6 +24,6 @@ class FileOut(BaseModel):
 
 
 class RunIn(BaseModel):
-    analyses: list[str]
+    analyses: list[str] = Field(min_length=1)
     force: bool = False
     allow_billing: bool = False
