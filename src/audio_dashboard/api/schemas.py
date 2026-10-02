@@ -39,3 +39,9 @@ class RunRecord(BaseModel):
     requested: list[str]
     force: bool
     allow_billing: bool
+
+
+class RunOut(BaseModel):
+    run_id: str
+    ran: list[str]
+    results_url: str

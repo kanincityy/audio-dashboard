@@ -1,19 +1,19 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 
 from audio_dashboard import asr, audio_io, registry
 
 from . import store
 from .files import UPLOAD_DIR
-from .schemas import RunIn, RunRecord
+from .schemas import RunIn, RunOut, RunRecord
 
 router = APIRouter(prefix="/v1")
 
 
-@router.post("/files/{digest}/runs")
-def create_run(digest: str, body: RunIn):
+@router.post("/files/{digest}/runs", response_model=RunOut, status_code=201)
+def create_run(digest: str, body: RunIn, response: Response):
     matches = list(UPLOAD_DIR.glob(f"{digest}.*"))
     if not matches:
         raise HTTPException(
@@ -59,4 +59,6 @@ def create_run(digest: str, body: RunIn):
     )
 
     store.save_run(record)
-    return record
+    results_url = f"/v1/runs/{run_id}"
+    response.headers["Location"] = results_url
+    return RunOut(run_id=run_id, ran=list(results), results_url=results_url)
