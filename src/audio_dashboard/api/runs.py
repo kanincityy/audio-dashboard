@@ -1,9 +1,13 @@
+import uuid
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, HTTPException
 
 from audio_dashboard import asr, audio_io, registry
 
+from . import store
 from .files import UPLOAD_DIR
-from .schemas import RunIn
+from .schemas import RunIn, RunRecord
 
 router = APIRouter(prefix="/v1")
 
@@ -42,4 +46,17 @@ def create_run(digest: str, body: RunIn):
     bundle = audio_io.load(path)
     results = registry.run(bundle, digest, body.analyses, force=body.force)
 
-    return {"digest": digest, "path": str(path), "results": results}
+    run_id = uuid.uuid4().hex
+    record = RunRecord(
+        run_id=run_id,
+        digest=digest,
+        ran=list(results),
+        results=results,
+        created_at=datetime.now(timezone.utc),
+        requested=body.analyses,
+        force=body.force,
+        allow_billing=body.allow_billing,
+    )
+
+    store.save_run(record)
+    return record
