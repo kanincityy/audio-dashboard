@@ -92,7 +92,9 @@ def test_run_that_would_bill_returns_403(tmp_path, monkeypatch):
     upload = client.post("/v1/files", files={"file": ("test.wav", b"fake audio bytes")})
     digest = upload.json()["digest"]
 
-    response = client.post(f"/v1/files/{digest}/runs", json={"analyses": ["transcript"]})
+    response = client.post(
+        f"/v1/files/{digest}/runs", json={"analyses": ["transcript"]}
+    )
 
     assert response.status_code == 403
 
