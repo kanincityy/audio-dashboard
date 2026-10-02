@@ -29,3 +29,14 @@ def test_upload_new_file_returns_201(tmp_path, monkeypatch):
     data = response.json()
     assert data["size_bytes"] == len(content)
     assert data["filename"] == "test.wav"
+
+
+def test_upload_same_file_twice_returns_200(tmp_path, monkeypatch):
+    monkeypatch.setattr(files, "UPLOAD_DIR", tmp_path)
+    content = b"fake audio bytes"
+
+    first_response = client.post("/v1/files", files={"file": ("test.wav", content)})
+    second_response = client.post("/v1/files", files={"file": ("test.wav", content)})
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 200
