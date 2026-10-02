@@ -62,3 +62,11 @@ def create_run(digest: str, body: RunIn, response: Response):
     results_url = f"/v1/runs/{run_id}"
     response.headers["Location"] = results_url
     return RunOut(run_id=run_id, ran=list(results), results_url=results_url)
+
+
+@router.get("/runs/{run_id}", response_model=RunRecord)
+def get_run(run_id: str):
+    record = store.get_run(run_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"No run with ID {run_id} found.")
+    return record
