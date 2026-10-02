@@ -209,7 +209,7 @@ def overlap(bundle: AudioBundle, results: dict[str, Any]) -> dict[str, Any]:
     real overlap in them — up to 8.9 s of it. Mono diarisation assigns every
     moment to exactly one speaker, so there is never an overlapping utterance
     to find. A mono zero is therefore reported as unusable, not as a pass: a
-    call full of cross-talk would otherwise clear the routing rule.
+    call full of cross-talk would otherwise show a green overlap card.
 
     Per-channel audio is the fix. Where each speaker has their own channel,
     diarisation is trivial and the overlaps are real.
@@ -254,7 +254,7 @@ def overlap(bundle: AudioBundle, results: dict[str, Any]) -> dict[str, Any]:
         # overlap. Not merely an underestimate — the diariser never emits an
         # overlapping utterance at all, so there is nothing here to sweep. A
         # zero on mono is therefore "not measured", and saying otherwise would
-        # turn the routing rule into a false pass on every call with cross-talk.
+        # turn the overlap card into a false pass on every call with cross-talk.
         "usable": not (mono and overlap_s == 0.0),
         "overlap_seconds": round(overlap_s, 3),
         "overlap_ratio": round(overlap_s / duration, 4),

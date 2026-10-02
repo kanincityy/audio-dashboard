@@ -43,5 +43,5 @@
   has asked for "the latest run of this file" yet. Add it when a caller needs it.
 
   ### Deferred
-  Routing verdicts get no endpoint in v1. `routing.evaluate` is slated for removal from
-  the repo, so no API surface should depend on it.
+  Routing verdicts get no endpoint. `routing.py` was removed from the repo after v1;
+  its thresholds now live in `thresholds.py`.
