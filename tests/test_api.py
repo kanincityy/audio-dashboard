@@ -116,11 +116,12 @@ def test_run_then_fetch_it(tmp_path, monkeypatch):
     digest = upload.json()["digest"]
 
     created = client.post(f"/v1/files/{digest}/runs", json={"analyses": ["levels"]})
-    assert created.status_code == 201
+    assert created.status_code == 202
     assert created.json()["ran"] == ["levels"]
 
     fetched = client.get(created.headers["location"])
     assert fetched.status_code == 200
+    assert fetched.json()["status"] == "done"
     # registry.run records a failing analysis as {"error": ...} instead of
     # raising, so check for a real value, not just the key.
     assert "peak_dbfs" in fetched.json()["results"]["levels"]
@@ -130,3 +131,14 @@ def test_unknown_run_id_returns_404():
     response = client.get("/v1/runs/nope")
 
     assert response.status_code == 404
+
+
+def test_broken_audio_run_is_marked_failed(tmp_path, monkeypatch):
+    monkeypatch.setattr(files, "UPLOAD_DIR", tmp_path)
+    monkeypatch.setattr(runs, "UPLOAD_DIR", tmp_path)
+    upload = client.post("/v1/files", files={"file": ("test.wav", b"fake audio bytes")})
+    digest = upload.json()["digest"]
+
+    response = client.post(f"/v1/files/{digest}/runs", json={"analyses": ["levels"]})
+    fetched = client.get(response.headers["location"])
+    assert fetched.json()["status"] == "failed"
