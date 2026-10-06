@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Response
 
@@ -10,6 +11,25 @@ from .files import UPLOAD_DIR
 from .schemas import RunIn, RunOut, RunRecord
 
 router = APIRouter(prefix="/v1")
+
+
+def _execute_run(digest: str, body: RunIn, path: Path, run_id: str):
+    bundle = audio_io.load(path)
+    results = registry.run(bundle, digest, body.analyses, force=body.force)
+
+    record = RunRecord(
+        run_id=run_id,
+        digest=digest,
+        ran=list(results),
+        results=results,
+        created_at=datetime.now(timezone.utc),
+        requested=body.analyses,
+        force=body.force,
+        allow_billing=body.allow_billing,
+        status="done",
+    )
+    store.save_run(record)
+    return record
 
 
 @router.post("/files/{digest}/runs", response_model=RunOut, status_code=201)
@@ -43,26 +63,11 @@ def create_run(digest: str, body: RunIn, response: Response):
                 "transcript would be billed for this file; set allow_billing to run it."
             ),
         )
-    bundle = audio_io.load(path)
-    results = registry.run(bundle, digest, body.analyses, force=body.force)
-
     run_id = uuid.uuid4().hex
-    record = RunRecord(
-        run_id=run_id,
-        digest=digest,
-        ran=list(results),
-        results=results,
-        created_at=datetime.now(timezone.utc),
-        requested=body.analyses,
-        force=body.force,
-        allow_billing=body.allow_billing,
-        status="done"
-    )
-
-    store.save_run(record)
+    record = _execute_run(digest, body, path, run_id)
     results_url = f"/v1/runs/{run_id}"
     response.headers["Location"] = results_url
-    return RunOut(run_id=run_id, ran=list(results), results_url=results_url)
+    return RunOut(run_id=run_id, ran=record.ran, results_url=results_url)
 
 
 @router.get("/runs/{run_id}", response_model=RunRecord)
