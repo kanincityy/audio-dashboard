@@ -116,7 +116,7 @@ def test_run_then_fetch_it(tmp_path, monkeypatch):
     digest = upload.json()["digest"]
 
     created = client.post(f"/v1/files/{digest}/runs", json={"analyses": ["levels"]})
-    assert created.status_code == 201
+    assert created.status_code == 202
     assert created.json()["ran"] == ["levels"]
 
     fetched = client.get(created.headers["location"])
