@@ -40,6 +40,7 @@ class RunRecord(BaseModel):
     force: bool
     allow_billing: bool
     status: Literal["queued", "running", "done", "failed"] = "queued"
+    error: str | None = None
 
 
 class RunOut(BaseModel):

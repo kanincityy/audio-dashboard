@@ -1,8 +1,9 @@
+import logging
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Response, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Response
 
 from audio_dashboard import asr, audio_io, registry
 
@@ -10,13 +11,25 @@ from . import store
 from .files import UPLOAD_DIR
 from .schemas import RunIn, RunOut, RunRecord
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1")
 
 
 def _execute_run(path: Path, run_id: str):
-    bundle = audio_io.load(path)
     record = store.get_run(run_id)
-    results = registry.run(bundle, record.digest, record.requested, force=record.force)
+    record.status = "running"
+    store.save_run(record)
+    try:
+        bundle = audio_io.load(path)
+        results = registry.run(
+            bundle, record.digest, record.requested, force=record.force
+        )
+    except Exception as exc:
+        record.status = "failed"
+        record.error = f"Run failed ({type(exc).__name__}). Check the server log."
+        logger.exception("Run %s failed", run_id)
+        store.save_run(record)
+        return
     record.results = results
     record.ran = list(results)
     record.status = "done"
