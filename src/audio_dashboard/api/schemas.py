@@ -33,12 +33,13 @@ class RunIn(BaseModel):
 class RunRecord(BaseModel):
     run_id: str
     digest: str
-    ran: list[str]
-    results: dict[str, Any]
+    ran: list[str] = []
+    results: dict[str, Any] = {}
     created_at: datetime
     requested: list[str]
     force: bool
     allow_billing: bool
+    status: Literal["queued", "running", "done", "failed"] = "queued"
 
 
 class RunOut(BaseModel):

@@ -56,6 +56,7 @@ def create_run(digest: str, body: RunIn, response: Response):
         requested=body.analyses,
         force=body.force,
         allow_billing=body.allow_billing,
+        status="done"
     )
 
     store.save_run(record)
