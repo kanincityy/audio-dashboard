@@ -10,10 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..audio_io import AudioBundle, probe
-
-# At or below this, the audio is telephony-band and the top of the speech
-# spectrum was never recorded. notes.md:4.
-NARROWBAND_HZ = 8_000
+from ..thresholds import NARROWBAND_HZ
 
 # Codecs whose very presence signals heavy compression, regardless of the
 # bitrate they report. notes.md:7.

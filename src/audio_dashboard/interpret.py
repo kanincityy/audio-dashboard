@@ -4,15 +4,14 @@ The extractors produce facts. This module turns a fact into a judgement — is
 -18.4 dBFS fine or a problem? — and into two sentences of plain English: what
 was measured, and why an ASR model cares.
 
-It is the single source for that. The metric cards, the plot captions and the
-routing detail panel all read it, so the value shown on a card and the
-explanation shown next to a routing rule can never drift apart.
+It is the single source for that. The metric cards and the plot captions both
+read it, so a number and its explanation can never drift apart.
 
-Pure and dependency-free, like ``routing``, and tested for the same reason.
+Pure and dependency-free, and tested for that reason.
 
 On provenance: every metric names where its bands came from in ``source``.
-Some are thresholds from ``notes.md`` and are shared with ``routing`` by
-import rather than restated. The rest are conventional ranges with nothing
+Some are thresholds from ``notes.md``, imported from ``thresholds`` rather
+than restated. The rest are conventional ranges with nothing
 citable behind them, and they say so, because a tuned threshold and a guess
 should not look alike on screen.
 """
@@ -22,7 +21,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from .routing import (
+from .thresholds import (
     BANDWIDTH_RATIO,
     HIGH_PITCH_HZ,
     OVERLAP_RATIO,
@@ -31,10 +30,10 @@ from .routing import (
     SILENCE_RATIO,
     SNR_DB,
 )
-from .routing import NARROWBAND_HZ as _NARROWBAND_HZ
+from .thresholds import NARROWBAND_HZ as _NARROWBAND_HZ
 
-# Verdict for a single number. Deliberately the same shape of distinction the
-# routing rules make: a value nobody measured is not a value that passed.
+# Verdict for a single number. A value nobody measured is not a value that
+# passed, so UNKNOWN is its own status rather than a quiet GOOD.
 GOOD = "good"
 CAUTION = "caution"
 PROBLEM = "problem"
@@ -1118,7 +1117,7 @@ def classify(metric: Metric, value: Any) -> tuple[str, str]:
 
     A value that is absent, or that came from an analysis which failed or
     declined, is UNKNOWN — never GOOD. Not measured must not read as measured
-    and fine, which is the same rule the routing verdicts follow.
+    and fine.
     """
     if value is None:
         return UNKNOWN, "not measured"
@@ -1138,10 +1137,22 @@ def classify(metric: Metric, value: Any) -> tuple[str, str]:
     return UNKNOWN, "off the scale"
 
 
+def metric_value(results: dict[str, Any], analysis: str, key: str) -> Any:
+    """Read a metric, treating a failed or unusable analysis as absent.
+
+    A card that cannot see a number must not colour itself green, so an
+    analysis that errored or flagged itself unusable reads as None.
+    """
+    block = results.get(analysis)
+    if not isinstance(block, dict) or "error" in block:
+        return None
+    if block.get("usable") is False:
+        return None
+    return block.get(key)
+
+
 def value_of(results: dict[str, Any], metric: Metric) -> Any:
     """Read a metric out of a results dict, or None if it is not there."""
-    from .routing import metric_value
-
     return metric_value(results, metric.analysis, metric.key)
 
 
@@ -1163,44 +1174,6 @@ def format_value(metric: Metric, value: Any) -> str:
     if isinstance(value, (int, float)):
         return f"{float(value):.{metric.precision}f}"
     return str(value)
-
-
-# ------------------------------------------------------------- rules to metrics
-
-# Which measurement each routing rule is reading, so the routing panel can show
-# the same band bar and the same explanation as the metric card. Keyed by the
-# rule names in routing.evaluate; a test checks none has been missed.
-RULE_METRICS: dict[str, tuple[str, str] | None] = {
-    "Low signal-to-noise ratio": ("snr", "snr_db"),
-    "Telephony-band audio": ("format", "sample_rate_khz"),
-    "Multi-channel audio": ("format", "channels"),
-    "Heavy compression": ("format", "heavy_compression"),
-    "Very short utterance": ("format", "duration_s"),
-    "Sparse speech": ("density", "silence_ratio"),
-    "Truncated or clipped utterance": ("truncation", "hallucination_risk"),
-    "Overlapping speech": ("overlap", "overlap_ratio"),
-    "Audio too quiet": ("levels", "rms_dbfs"),
-    "Clipping and distortion": ("clipping", "clipped_run_count"),
-    "High-frequency loss or artificial upsampling": (
-        "bandwidth",
-        "cutoff_to_nyquist",
-    ),
-    "High reverberation": ("rt60", "rt60_s"),
-    "Multiple speakers": ("speakers", "speaker_count"),
-    "High fundamental pitch": ("f0", "f0_median_hz"),
-}
-
-
-def metric_for_rule(rule: str) -> Metric | None:
-    """The metric a routing rule reads, if it reads one."""
-    pair = RULE_METRICS.get(rule)
-    if pair is None:
-        return None
-    analysis, key = pair
-    for metric in BY_ANALYSIS.get(analysis, ()):
-        if metric.key == key:
-            return metric
-    return None
 
 
 # ------------------------------------------------------------------- the plots

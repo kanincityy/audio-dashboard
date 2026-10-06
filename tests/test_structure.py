@@ -3,7 +3,7 @@
 The overlap tests are here because of what the synthetic corpus showed: on
 mono audio the estimator returned 0.000 s on every file that had real overlap
 in it. A zero from a method that cannot produce anything else is not a
-measurement, and must not reach the routing layer as a pass.
+measurement, and must not reach a metric card as a pass.
 
 ``scripts/validate_corpus.py`` is where that claim is scored against ground
 truth. This is where it is nailed down so it cannot regress.
@@ -76,12 +76,12 @@ def test_a_zero_from_multichannel_audio_is_a_real_answer():
     assert out["overlap_ratio"] == 0.0
 
 
-def test_the_routing_rule_cannot_read_a_mono_zero_as_a_pass():
-    from audio_dashboard import routing
+def test_a_mono_zero_cannot_be_read_as_a_pass():
+    from audio_dashboard import interpret
 
     results = {"overlap": structure.overlap(bundle(), transcript([(0.0, 4.0, "A")]))}
-    verdict = next(v for v in routing.evaluate(results) if v.rule == "Overlapping speech")
-    assert verdict.status == routing.UNKNOWN
+    ratio = next(m for m in interpret.BY_ANALYSIS["overlap"] if m.key == "overlap_ratio")
+    assert interpret.read(results, ratio)[1] == interpret.UNKNOWN
 
 
 def test_unattributed_speech_counts_only_what_no_utterance_covers():

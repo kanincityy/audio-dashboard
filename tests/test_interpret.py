@@ -15,7 +15,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from audio_dashboard import interpret, registry, routing  # noqa: E402
+from audio_dashboard import interpret, registry, thresholds  # noqa: E402
 from audio_dashboard.features import quality  # noqa: E402
 
 
@@ -77,11 +77,11 @@ def metric(analysis: str, key: str) -> interpret.Metric:
 
 def test_a_value_on_a_band_edge_belongs_to_that_band():
     snr = metric("snr", "snr_db")
-    # The routing rule fires below 12, so 12 itself is the top of the noisy
-    # band and must not read as clean.
-    assert interpret.classify(snr, routing.SNR_DB)[0] == interpret.PROBLEM
-    assert interpret.classify(snr, routing.SNR_DB - 0.01)[0] == interpret.PROBLEM
-    assert interpret.classify(snr, routing.SNR_DB + 0.01)[0] == interpret.CAUTION
+    # notes.md treats anything at or below 12 as noisy, so 12 itself is the
+    # top of the noisy band and must not read as clean.
+    assert interpret.classify(snr, thresholds.SNR_DB)[0] == interpret.PROBLEM
+    assert interpret.classify(snr, thresholds.SNR_DB - 0.01)[0] == interpret.PROBLEM
+    assert interpret.classify(snr, thresholds.SNR_DB + 0.01)[0] == interpret.CAUTION
 
 
 def test_the_open_ended_band_catches_anything():
@@ -158,54 +158,37 @@ def test_an_unmeasurable_metric_never_reads_as_fine(results):
     assert label == "not measured"
 
 
-def test_reading_agrees_with_the_routing_rules_about_what_counts_as_absent():
-    """One definition of absent, or a card and a rule could disagree."""
+def test_an_analysis_that_declined_reads_as_absent():
+    """A number from an analysis that called itself unusable is not shown."""
     results = {"snr": {"usable": False, "snr_db": 3.0}}
-    assert routing.metric_value(results, "snr", "snr_db") is None
+    assert interpret.metric_value(results, "snr", "snr_db") is None
     assert interpret.read(results, metric("snr", "snr_db"))[0] is None
 
 
 # ------------------------------------------------------------ shared constants
 
 
-def test_thresholds_are_shared_with_routing_rather_than_restated():
+def test_bands_import_their_thresholds_rather_than_restating_them():
     snr = metric("snr", "snr_db")
-    assert snr.bands[0].upper == routing.SNR_DB
+    assert snr.bands[0].upper == thresholds.SNR_DB
 
     silence = metric("density", "silence_ratio")
-    assert silence.bands[1].upper == routing.SILENCE_RATIO
+    assert silence.bands[1].upper == thresholds.SILENCE_RATIO
 
     pitch = metric("f0", "f0_median_hz")
-    assert pitch.bands[1].upper == routing.HIGH_PITCH_HZ
+    assert pitch.bands[1].upper == thresholds.HIGH_PITCH_HZ
 
     band = metric("bandwidth", "cutoff_to_nyquist")
-    assert band.bands[0].upper == routing.BANDWIDTH_RATIO
+    assert band.bands[0].upper == thresholds.BANDWIDTH_RATIO
 
     rt = metric("rt60", "rt60_s")
-    assert rt.bands[1].upper == routing.RT60_S
+    assert rt.bands[1].upper == thresholds.RT60_S
 
 
 def test_the_cliff_band_matches_the_detector_that_produces_it():
     """interpret stays pure, so this is where the two constants are compared."""
     cliff = metric("bandwidth", "cliff_drop_db")
     assert cliff.bands[0].upper == quality.CLIFF_DROP_DB
-
-
-# ---------------------------------------------------------------- rule mapping
-
-
-def test_every_routing_rule_has_an_explanation_to_show():
-    for verdict in routing.evaluate({}):
-        assert verdict.rule in interpret.RULE_METRICS, verdict.rule
-
-
-def test_every_mapped_rule_resolves_to_a_real_metric():
-    for rule in interpret.RULE_METRICS:
-        assert interpret.metric_for_rule(rule) is not None, rule
-
-
-def test_an_unmapped_rule_returns_nothing_rather_than_raising():
-    assert interpret.metric_for_rule("Not a rule") is None
 
 
 # -------------------------------------------------------------------- display

@@ -13,7 +13,7 @@ import librosa
 import numpy as np
 
 from ..audio_io import VAD_SR, AudioBundle
-from ..routing import HIGH_PITCH_HZ
+from ..thresholds import HIGH_PITCH_HZ
 
 # Wide enough to cover a low voice through a child's, which is the range
 # notes.md:36 cares about — pitch far above the adult-read-speech distribution
