@@ -19,10 +19,21 @@ def _execute_run(path: Path, run_id: str):
     record = store.get_run(run_id)
     record.status = "running"
     store.save_run(record)
+
+    def on_start(name, analysis):
+        if record.current is not None:
+            record.completed += 1
+        record.current = name
+        store.save_run(record)
+
     try:
         bundle = audio_io.load(path)
         results = registry.run(
-            bundle, record.digest, record.requested, force=record.force
+            bundle,
+            record.digest,
+            record.requested,
+            force=record.force,
+            on_start=on_start,
         )
     except Exception as exc:
         record.status = "failed"
@@ -32,9 +43,10 @@ def _execute_run(path: Path, run_id: str):
         return
     record.results = results
     record.ran = list(results)
+    record.completed = record.total
+    record.current = None
     record.status = "done"
     store.save_run(record)
-    return record
 
 
 @router.post("/files/{digest}/runs", response_model=RunOut, status_code=202)
@@ -81,6 +93,9 @@ def create_run(
         force=body.force,
         allow_billing=body.allow_billing,
         status="queued",
+        total=len(order),
+        completed=0,
+        current=None,
     )
     store.save_run(record)
     background_tasks.add_task(_execute_run, path, run_id)

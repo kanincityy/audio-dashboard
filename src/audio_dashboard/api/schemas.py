@@ -41,6 +41,9 @@ class RunRecord(BaseModel):
     allow_billing: bool
     status: Literal["queued", "running", "done", "failed"] = "queued"
     error: str | None = None
+    current: str | None = None
+    completed: int = 0
+    total: int = 0
 
 
 class RunOut(BaseModel):
