@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from pathlib import Path
 
@@ -23,6 +24,13 @@ CREATE TABLE IF NOT EXISTS runs (
 );
 """
 
+_SAVE = """
+INSERT OR REPLACE INTO runs (
+    run_id, digest, ran, results, created_at, requested, force, allow_billing, status, error, current, completed, total
+) VALUES (
+    :run_id, :digest, :ran, :results, :created_at, :requested, :force, :allow_billing, :status, :error, :current, :completed, :total
+);"""
+
 
 def init_db() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -36,6 +44,15 @@ _runs: dict[str, RunRecord] = {}
 
 def save_run(record: RunRecord) -> None:
     _runs[record.run_id] = record
+    values = record.model_dump()
+    values["ran"] = json.dumps(record.ran)
+    values["results"] = json.dumps(record.results)
+    values["requested"] = json.dumps(record.requested)
+    values["created_at"] = record.created_at.isoformat()
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute(_SAVE, values)
+    conn.commit()
+    conn.close()
 
 
 def get_run(run_id: str) -> RunRecord | None:
