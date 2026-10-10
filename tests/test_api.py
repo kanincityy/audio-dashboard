@@ -1,13 +1,15 @@
 import io
+from datetime import datetime, timezone
 
 import numpy as np
-import soundfile as sf
 import pytest
+import soundfile as sf
 from fastapi.testclient import TestClient
 
 from audio_dashboard import asr, cache
 from audio_dashboard.api import files, runs, store
 from audio_dashboard.api.main import app
+from audio_dashboard.api.schemas import RunRecord
 
 client = TestClient(app)
 
@@ -143,3 +145,27 @@ def test_broken_audio_run_is_marked_failed():
     response = client.post(f"/v1/files/{digest}/runs", json={"analyses": ["levels"]})
     fetched = client.get(response.headers["location"])
     assert fetched.json()["status"] == "failed"
+
+
+def test_runs_cut_off_by_a_restart_are_marked_failed():
+    def saved(run_id, status):
+        store.save_run(
+            RunRecord(
+                run_id=run_id,
+                digest="abc",
+                created_at=datetime.now(timezone.utc),
+                requested=["snr"],
+                force=False,
+                allow_billing=False,
+                status=status,
+            )
+        )
+
+    saved("was-running", "running")
+    saved("was-queued", "queued")
+    saved("finished", "done")
+
+    assert store.fail_interrupted_runs() == 2
+    assert store.get_run("was-running").status == "failed"
+    assert store.get_run("was-queued").status == "failed"
+    assert store.get_run("finished").status == "done"

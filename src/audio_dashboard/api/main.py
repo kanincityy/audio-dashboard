@@ -11,6 +11,7 @@ from .runs import router as runs_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     store.init_db()
+    store.fail_interrupted_runs()
     yield
     # shutdown code would go here (we need none)
 

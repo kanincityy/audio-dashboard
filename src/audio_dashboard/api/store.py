@@ -35,6 +35,14 @@ INSERT OR REPLACE INTO runs (
 _GET = """
 SELECT * FROM runs WHERE run_id = :run_id;"""
 
+# A background run lives inside the server process, so a restart kills it
+# mid-way and nothing is left to mark it finished. Without this it would say
+# "queued" or "running" forever and a client polling it would never stop.
+_FAIL_INTERRUPTED = """
+UPDATE runs
+SET status = 'failed', error = 'Server restarted before the run finished.', current = NULL
+WHERE status IN ('queued', 'running');"""
+
 
 def init_db() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -71,3 +79,12 @@ def get_run(run_id: str) -> RunRecord | None:
     values["requested"] = json.loads(values["requested"])
     values["created_at"] = datetime.fromisoformat(values["created_at"])
     return RunRecord(**values)
+
+
+def fail_interrupted_runs() -> int:
+    """Mark runs cut off by a restart as failed. Returns how many there were."""
+    conn = sqlite3.connect(DB_PATH)
+    count = conn.execute(_FAIL_INTERRUPTED).rowcount
+    conn.commit()
+    conn.close()
+    return count
