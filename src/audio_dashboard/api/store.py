@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 
 from .schemas import RunRecord
@@ -31,6 +32,9 @@ INSERT OR REPLACE INTO runs (
     :run_id, :digest, :ran, :results, :created_at, :requested, :force, :allow_billing, :status, :error, :current, :completed, :total
 );"""
 
+_GET = """
+SELECT * FROM runs WHERE run_id = :run_id;"""
+
 
 def init_db() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -39,11 +43,7 @@ def init_db() -> None:
     conn.close()
 
 
-_runs: dict[str, RunRecord] = {}
-
-
 def save_run(record: RunRecord) -> None:
-    _runs[record.run_id] = record
     values = record.model_dump()
     values["ran"] = json.dumps(record.ran)
     values["results"] = json.dumps(record.results)
@@ -56,4 +56,18 @@ def save_run(record: RunRecord) -> None:
 
 
 def get_run(run_id: str) -> RunRecord | None:
-    return _runs.get(run_id)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.execute(_GET, {"run_id": run_id})
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    values = dict(row)
+    values["ran"] = json.loads(values["ran"])
+    values["results"] = json.loads(values["results"])
+    values["requested"] = json.loads(values["requested"])
+    values["created_at"] = datetime.fromisoformat(values["created_at"])
+    return RunRecord(**values)
