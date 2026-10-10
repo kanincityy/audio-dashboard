@@ -2,14 +2,29 @@ import io
 
 import numpy as np
 import soundfile as sf
+import pytest
 from fastapi.testclient import TestClient
 
 from audio_dashboard import asr, cache
-
-from audio_dashboard.api import files, runs
+from audio_dashboard.api import files, runs, store
 from audio_dashboard.api.main import app
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def isolated(tmp_path, monkeypatch):
+    """Point every place the API writes to at this test's own temp folder.
+
+    autouse runs it before every test in this file, so no test can forget a
+    patch and leak into the real uploads/, cache or database. runs.py has its
+    own copy of the UPLOAD_DIR name (it imported it), so it is patched too.
+    """
+    monkeypatch.setattr(files, "UPLOAD_DIR", tmp_path / "uploads")
+    monkeypatch.setattr(runs, "UPLOAD_DIR", tmp_path / "uploads")
+    monkeypatch.setattr(cache, "CACHE_DIR", tmp_path / "cache")
+    monkeypatch.setattr(store, "DB_PATH", tmp_path / "runs.db")
+    store.init_db()
 
 
 def test_health_check():
@@ -25,8 +40,7 @@ def test_analyses_lists_snr():
     assert "snr" in names
 
 
-def test_upload_new_file_returns_201(tmp_path, monkeypatch):
-    monkeypatch.setattr(files, "UPLOAD_DIR", tmp_path)
+def test_upload_new_file_returns_201():
     content = b"fake audio bytes"
 
     response = client.post("/v1/files", files={"file": ("test.wav", content)})
@@ -37,8 +51,7 @@ def test_upload_new_file_returns_201(tmp_path, monkeypatch):
     assert data["filename"] == "test.wav"
 
 
-def test_upload_same_file_twice_returns_200(tmp_path, monkeypatch):
-    monkeypatch.setattr(files, "UPLOAD_DIR", tmp_path)
+def test_upload_same_file_twice_returns_200():
     content = b"fake audio bytes"
 
     first_response = client.post("/v1/files", files={"file": ("test.wav", content)})
@@ -48,8 +61,7 @@ def test_upload_same_file_twice_returns_200(tmp_path, monkeypatch):
     assert second_response.status_code == 200
 
 
-def test_upload_text_returns_415(tmp_path, monkeypatch):
-    monkeypatch.setattr(files, "UPLOAD_DIR", tmp_path)
+def test_upload_text_returns_415():
     content = b"fake audio bytes"
 
     response = client.post("/v1/files", files={"file": ("test.txt", content)})
@@ -57,18 +69,14 @@ def test_upload_text_returns_415(tmp_path, monkeypatch):
     assert response.status_code == 415
 
 
-def test_run_unknown_digest_returns_404(tmp_path, monkeypatch):
-    monkeypatch.setattr(files, "UPLOAD_DIR", tmp_path)
-    monkeypatch.setattr(runs, "UPLOAD_DIR", tmp_path)
+def test_run_unknown_digest_returns_404():
 
     response = client.post("/v1/files/abc/runs", json={"analyses": ["snr"]})
 
     assert response.status_code == 404
 
 
-def test_run_unknown_analysis_returns_422(tmp_path, monkeypatch):
-    monkeypatch.setattr(files, "UPLOAD_DIR", tmp_path)
-    monkeypatch.setattr(runs, "UPLOAD_DIR", tmp_path)
+def test_run_unknown_analysis_returns_422():
     upload = client.post("/v1/files", files={"file": ("test.wav", b"fake audio bytes")})
     digest = upload.json()["digest"]
 
@@ -78,9 +86,7 @@ def test_run_unknown_analysis_returns_422(tmp_path, monkeypatch):
     assert "snrr" in response.json()["detail"]
 
 
-def test_run_that_would_bill_returns_403(tmp_path, monkeypatch):
-    monkeypatch.setattr(files, "UPLOAD_DIR", tmp_path)
-    monkeypatch.setattr(runs, "UPLOAD_DIR", tmp_path)
+def test_run_that_would_bill_returns_403(monkeypatch):
     monkeypatch.setattr(asr, "is_cached", lambda path, config: False)
 
     # Safety net: if the 403 check ever broke, the run would reach the paid
@@ -108,10 +114,7 @@ def _one_second_tone() -> bytes:
     return buffer.getvalue()
 
 
-def test_run_then_fetch_it(tmp_path, monkeypatch):
-    monkeypatch.setattr(files, "UPLOAD_DIR", tmp_path)
-    monkeypatch.setattr(runs, "UPLOAD_DIR", tmp_path)
-    monkeypatch.setattr(cache, "CACHE_DIR", tmp_path / "cache")
+def test_run_then_fetch_it():
     upload = client.post("/v1/files", files={"file": ("tone.wav", _one_second_tone())})
     digest = upload.json()["digest"]
 
@@ -133,9 +136,7 @@ def test_unknown_run_id_returns_404():
     assert response.status_code == 404
 
 
-def test_broken_audio_run_is_marked_failed(tmp_path, monkeypatch):
-    monkeypatch.setattr(files, "UPLOAD_DIR", tmp_path)
-    monkeypatch.setattr(runs, "UPLOAD_DIR", tmp_path)
+def test_broken_audio_run_is_marked_failed():
     upload = client.post("/v1/files", files={"file": ("test.wav", b"fake audio bytes")})
     digest = upload.json()["digest"]
 
