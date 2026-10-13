@@ -15,6 +15,7 @@ wheels/
 # Cached transcripts, cached feature results, uploaded audio
 .cache/
 uploads/
+data/
 
 # Tooling
 .pytest_cache/
