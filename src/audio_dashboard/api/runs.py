@@ -49,10 +49,7 @@ def _execute_run(path: Path, run_id: str):
     store.save_run(record)
 
 
-@router.post("/files/{digest}/runs", response_model=RunOut, status_code=202)
-def create_run(
-    digest: str, body: RunIn, response: Response, background_tasks: BackgroundTasks
-):
+def _require_upload(digest: str):
     matches = list(UPLOAD_DIR.glob(f"{digest}.*"))
     if not matches:
         raise HTTPException(
@@ -61,6 +58,14 @@ def create_run(
                 f"No uploaded file with digest {digest}. Upload it with POST /v1/files first."
             ),
         )
+    return matches
+
+
+@router.post("/files/{digest}/runs", response_model=RunOut, status_code=202)
+def create_run(
+    digest: str, body: RunIn, response: Response, background_tasks: BackgroundTasks
+):
+    matches = _require_upload(digest)
     path = matches[0]
     unknown = [name for name in body.analyses if name not in registry.BY_NAME]
     if unknown:
@@ -110,3 +115,10 @@ def get_run(run_id: str):
     if record is None:
         raise HTTPException(status_code=404, detail=f"No run with ID {run_id} found.")
     return record
+
+
+@router.get("/files/{digest}/runs", response_model=list[RunRecord], status_code=200)
+def get_runs(digest: str):
+    _require_upload(digest)
+    records = store.get_runs(digest)
+    return records

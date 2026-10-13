@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS runs (
 );
 """
 
+_CREATE_DIGEST_INDEX = "CREATE INDEX IF NOT EXISTS idx_digest ON runs (digest);"
+
 _SAVE = """
 INSERT OR REPLACE INTO runs (
     run_id, digest, ran, results, created_at, requested, force, allow_billing, status, error, current, completed, total
@@ -34,6 +36,9 @@ INSERT OR REPLACE INTO runs (
 
 _GET = """
 SELECT * FROM runs WHERE run_id = :run_id;"""
+
+_LIST_FOR_DIGEST = """
+SELECT * FROM runs WHERE digest = :digest ORDER BY created_at DESC;"""
 
 # A background run lives inside the server process, so a restart kills it
 # mid-way and nothing is left to mark it finished. Without this it would say
@@ -48,6 +53,8 @@ def init_db() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.execute(_SCHEMA)
+    conn.execute(_CREATE_DIGEST_INDEX)
+    conn.commit()
     conn.close()
 
 
@@ -63,6 +70,15 @@ def save_run(record: RunRecord) -> None:
     conn.close()
 
 
+def _row_to_record(row):
+    values = dict(row)
+    values["ran"] = json.loads(values["ran"])
+    values["results"] = json.loads(values["results"])
+    values["requested"] = json.loads(values["requested"])
+    values["created_at"] = datetime.fromisoformat(values["created_at"])
+    return RunRecord(**values)
+
+
 def get_run(run_id: str) -> RunRecord | None:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -73,12 +89,17 @@ def get_run(run_id: str) -> RunRecord | None:
     if not row:
         return None
 
-    values = dict(row)
-    values["ran"] = json.loads(values["ran"])
-    values["results"] = json.loads(values["results"])
-    values["requested"] = json.loads(values["requested"])
-    values["created_at"] = datetime.fromisoformat(values["created_at"])
-    return RunRecord(**values)
+    return _row_to_record(row)
+
+
+def get_runs(digest: str) -> list[RunRecord]:
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.execute(_LIST_FOR_DIGEST, {"digest": digest})
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [_row_to_record(row) for row in rows]
 
 
 def fail_interrupted_runs() -> int:

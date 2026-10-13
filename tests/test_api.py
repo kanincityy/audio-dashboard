@@ -132,6 +132,26 @@ def test_run_then_fetch_it():
     assert "peak_dbfs" in fetched.json()["results"]["levels"]
 
 
+def test_list_runs_for_a_file():
+    upload = client.post("/v1/files", files={"file": ("tone.wav", _one_second_tone())})
+    digest = upload.json()["digest"]
+
+    before = client.get(f"/v1/files/{digest}/runs")
+    assert before.status_code == 200
+    assert before.json() == []
+
+    created = client.post(f"/v1/files/{digest}/runs", json={"analyses": ["levels"]})
+
+    after = client.get(f"/v1/files/{digest}/runs")
+    assert [run["run_id"] for run in after.json()] == [created.json()["run_id"]]
+
+
+def test_list_runs_for_unknown_digest_returns_404():
+    response = client.get("/v1/files/nope/runs")
+
+    assert response.status_code == 404
+
+
 def test_unknown_run_id_returns_404():
     response = client.get("/v1/runs/nope")
 
