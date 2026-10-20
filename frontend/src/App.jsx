@@ -10,7 +10,13 @@ function App() {
   }, []);
 
   return (
-    <h1>Audio dashboard: {analyses.length} analyses</h1>)
+    <div>
+      <h1>Audio dashboard</h1>
+      <ul>
+        {analyses.map((a) => <li key={a.name}>{a.label}</li>)}
+      </ul>
+    </div>
+  );
 }
 
 export default App
