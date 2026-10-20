@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 
+function AnalysisCheckbox({ analysis, onToggle }) {
+  return (
+    <li>
+      <label>
+        <input type="checkbox" onChange={() => onToggle(analysis.name)} />{" "}
+        {analysis.label}
+      </label>
+    </li>
+  );
+}
+
 function App() {
   const [analyses, setAnalyses] = useState([])
   const [selected, setSelected] = useState([])
@@ -21,7 +32,9 @@ function App() {
     <div>
       <h1>Audio dashboard: {selected.length} selected</h1>
       <ul>
-        {analyses.map((a) => <li key={a.name}><label><input type="checkbox" onChange={() => toggle(a.name)} /> {a.label}</label></li>)}
+        {analyses.map((a) => (
+          <AnalysisCheckbox key={a.name} analysis={a} onToggle={toggle} />
+        ))}
       </ul>
     </div>
   );
