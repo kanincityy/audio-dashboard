@@ -18,11 +18,27 @@ function App() {
   const [file, setFile] = useState(null)
   const [digest, setDigest] = useState(null)
   const [error, setError] = useState(null)
+  const [runId, setRunId] = useState(null)
+  const [run, setRun] = useState(null)
   useEffect(() => {
     fetch("http://localhost:8000/v1/analyses")
       .then((response) => response.json())
       .then((data) => setAnalyses(data.analyses));
   }, []);
+  useEffect(() => {
+    if (!runId) return;
+    const timer = setInterval(() => {
+      fetch(`http://localhost:8000/v1/runs/${runId}`)
+        .then((response) => response.json())
+        .then((data) => {
+          setRun(data);
+          if (data.status === "done" || data.status === "failed") {
+            clearInterval(timer)
+          }
+        });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [runId]);
   function toggle(name) {
     if (selected.includes(name)) {
       setSelected(selected.filter((n) => n !== name));
@@ -52,6 +68,7 @@ function App() {
       }
     } else {
       setError(null);
+      setRunId(data.run_id)
     }
   }
 
@@ -64,6 +81,15 @@ function App() {
       <p>{digest && digest}</p>
       <button onClick={startRun}>Run</button>
       <p>{error}</p>
+      <p>{runId}</p>
+      {run && (
+        <div>
+          <progress value={run.completed} max={run.total} />
+          <p>
+            {run.completed} / {run.total} {run.status}
+          </p>
+        </div>
+      )}
       <ul>
         {analyses.map((a) => (
           <AnalysisCheckbox key={a.name} analysis={a} onToggle={toggle} />
