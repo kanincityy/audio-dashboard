@@ -89,3 +89,22 @@ def test_unattributed_speech_counts_only_what_no_utterance_covers():
     results["vad"] = {"speech_spans": [[0.0, 4.0], [6.0, 8.0]]}
     out = structure.overlap(bundle(), results)
     assert out["unattributed_speech_s"] == 2.0
+
+
+# ----------------------------------------------------- VAD never run
+
+
+def test_density_declines_when_vad_was_not_run():
+    class Clip:
+        duration = 10.0
+
+    result = structure.density(Clip(), {})
+    assert result["usable"] is False
+
+
+def test_truncation_declines_when_vad_was_not_run():
+    class Clip:
+        duration = 10.0
+
+    result = structure.truncation(Clip(), {})
+    assert result["usable"] is False
