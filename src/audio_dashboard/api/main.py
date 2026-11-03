@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from . import store
 from .analyses import router as analyses_router
@@ -17,9 +18,18 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
 app.include_router(analyses_router)
 app.include_router(files_router)
 app.include_router(runs_router)
+
+origins = [
+    "http://localhost:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware, allow_origins=origins, allow_methods=["*"]
+)
 
 
 @app.get("/health")
