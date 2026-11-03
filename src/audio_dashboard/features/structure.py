@@ -150,7 +150,10 @@ def truncation(bundle: AudioBundle, results: dict[str, Any]) -> dict[str, Any]:
         "word_count": word_count if tr else None,
         "few_words": few_words if tr else None,
         "hallucination_risk": bool(
-            bundle.duration < SHORT_FILE_S or starts_at_edge or ends_at_edge or few_words
+            bundle.duration < SHORT_FILE_S
+            or starts_at_edge
+            or ends_at_edge
+            or few_words
         ),
     }
 

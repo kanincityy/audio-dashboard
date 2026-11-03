@@ -1,6 +1,6 @@
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Response
@@ -93,7 +93,7 @@ def create_run(
         digest=digest,
         ran=[],
         results={},
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         requested=body.analyses,
         force=body.force,
         allow_billing=body.allow_billing,

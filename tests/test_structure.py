@@ -19,8 +19,8 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from audio_dashboard.audio_io import AudioBundle  # noqa: E402
-from audio_dashboard.features import structure  # noqa: E402
+from audio_dashboard.audio_io import AudioBundle
+from audio_dashboard.features import structure
 
 
 def bundle(duration: float = 10.0, *, stereo: bool = False) -> AudioBundle:
@@ -80,7 +80,9 @@ def test_a_mono_zero_cannot_be_read_as_a_pass():
     from audio_dashboard import interpret
 
     results = {"overlap": structure.overlap(bundle(), transcript([(0.0, 4.0, "A")]))}
-    ratio = next(m for m in interpret.BY_ANALYSIS["overlap"] if m.key == "overlap_ratio")
+    ratio = next(
+        m for m in interpret.BY_ANALYSIS["overlap"] if m.key == "overlap_ratio"
+    )
     assert interpret.read(results, ratio)[1] == interpret.UNKNOWN
 
 

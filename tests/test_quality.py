@@ -16,8 +16,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from audio_dashboard.audio_io import AudioBundle  # noqa: E402
-from audio_dashboard.features import quality  # noqa: E402
+from audio_dashboard.audio_io import AudioBundle
+from audio_dashboard.features import quality
 
 SR = 16_000
 
@@ -34,7 +34,9 @@ def bundle(samples: np.ndarray, sr: int = SR) -> AudioBundle:
     )
 
 
-def sine(freq: float, seconds: float, amplitude: float = 1.0, sr: int = SR) -> np.ndarray:
+def sine(
+    freq: float, seconds: float, amplitude: float = 1.0, sr: int = SR
+) -> np.ndarray:
     t = np.arange(int(seconds * sr)) / sr
     return amplitude * np.sin(2 * np.pi * freq * t)
 

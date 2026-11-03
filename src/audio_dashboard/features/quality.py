@@ -205,8 +205,8 @@ def snr(bundle: AudioBundle, results) -> dict:
                 "not enough speech or non-speech frames to compare "
                 "(digital silence does not count as noise)"
             ),
-            "speech_frames": int(len(speech_frames)),
-            "noise_frames": int(len(noise_frames)),
+            "speech_frames": len(speech_frames),
+            "noise_frames": len(noise_frames),
         }
 
     if method == "percentile":
@@ -232,8 +232,8 @@ def snr(bundle: AudioBundle, results) -> dict:
         "usable": True,
         "speech_level_dbfs": round(float(_db(speech_level)), 2),
         "noise_floor_dbfs": round(float(_db(noise_level)), 2),
-        "speech_frames": int(len(speech_frames)) if method == "vad" else None,
-        "noise_frames": int(len(noise_frames)) if method == "vad" else None,
+        "speech_frames": len(speech_frames) if method == "vad" else None,
+        "noise_frames": len(noise_frames) if method == "vad" else None,
     }
 
 
@@ -383,7 +383,7 @@ def rt60(bundle: AudioBundle, results) -> dict:
         "rt60_iqr_s": round(
             float(np.percentile(values, 75) - np.percentile(values, 25)), 3
         ),
-        "windows": int(len(values)),
+        "windows": len(values),
         "far_field": bool(np.median(values) > 0.8),
         "fit_region_db": [DECAY_START_DB, DECAY_END_DB],
     }

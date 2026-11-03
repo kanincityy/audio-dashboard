@@ -1,5 +1,5 @@
 import io
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import numpy as np
 import pytest
@@ -173,7 +173,7 @@ def test_runs_cut_off_by_a_restart_are_marked_failed():
             RunRecord(
                 run_id=run_id,
                 digest="abc",
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
                 requested=["snr"],
                 force=False,
                 allow_billing=False,

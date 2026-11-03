@@ -274,8 +274,7 @@ METRICS: tuple[Metric, ...] = (
         "format",
         "heavy_compression",
         "Heavy compression",
-        "Whether the codec is a lossy speech codec, or the bitrate is under "
-        "32 kbps.",
+        "Whether the codec is a lossy speech codec, or the bitrate is under 32 kbps.",
         "Expect spectral distortion and invented words. Treat low-confidence "
         "spans in the transcript with more suspicion than usual.",
         FROM_CODE,
@@ -532,8 +531,7 @@ METRICS: tuple[Metric, ...] = (
         "cliff_drop_db",
         "Steepness of the cutoff",
         "dB",
-        "How far the level falls across the sharpest edge found in the "
-        "spectrum.",
+        "How far the level falls across the sharpest edge found in the spectrum.",
         "Speech energy always tapers off gradually with frequency. Only a "
         "near-vertical drop means a resampler or a codec cut the audio short.",
         FROM_CODE,
@@ -560,8 +558,7 @@ METRICS: tuple[Metric, ...] = (
         "bandwidth",
         "likely_upsampled",
         "Probably upsampled",
-        "Whether the file appears to have been stretched up from a lower "
-        "sample rate.",
+        "Whether the file appears to have been stretched up from a lower sample rate.",
         "Do not trust the declared sample rate. Route this as narrowband "
         "audio regardless of what the header says.",
         FROM_NOTES,
@@ -761,8 +758,7 @@ METRICS: tuple[Metric, ...] = (
         "short_file",
         "Under two seconds",
         "Whether the whole file is shorter than two seconds.",
-        "Short clips have the highest hallucination rate of any category in "
-        "this list.",
+        "Short clips have the highest hallucination rate of any category in this list.",
         FROM_NOTES,
         true_label="very short",
         false_label="long enough",
@@ -811,8 +807,7 @@ METRICS: tuple[Metric, ...] = (
         "hallucination_risk",
         "Elevated hallucination risk",
         "Whether the file is short, or has speech touching either end.",
-        "Check the source segmentation before trusting anything in this "
-        "transcript.",
+        "Check the source segmentation before trusting anything in this transcript.",
         FROM_NOTES,
         true_label="elevated",
         false_label="not elevated",
@@ -840,8 +835,7 @@ METRICS: tuple[Metric, ...] = (
         "wpm_median",
         "Typical utterance speed",
         "wpm",
-        "The speed of a middling utterance, rather than the average across "
-        "the file.",
+        "The speed of a middling utterance, rather than the average across the file.",
         "Less sensitive than the overall figure to one long pause or one "
         "rushed sentence.",
         CONVENTIONAL,
@@ -874,10 +868,8 @@ METRICS: tuple[Metric, ...] = (
         "fast_utterance_count",
         "Utterances above 200 wpm",
         "",
-        "How many individual utterances were spoken faster than 200 words a "
-        "minute.",
-        "These are the specific places to check the transcript for dropped "
-        "words.",
+        "How many individual utterances were spoken faster than 200 words a minute.",
+        "These are the specific places to check the transcript for dropped words.",
         CONVENTIONAL,
         (
             Band(0, GOOD, "none"),
@@ -892,8 +884,7 @@ METRICS: tuple[Metric, ...] = (
         "overlap_ratio",
         "Time with two people talking",
         "",
-        "The share of the file where the diariser placed two speakers at "
-        "once.",
+        "The share of the file where the diariser placed two speakers at once.",
         "Cross-talk is the hardest case for a single-stream engine — it "
         "transcribes one voice and loses the other. On mono audio this cannot "
         "be measured at all, and reports itself as unmeasured rather than as "
@@ -931,8 +922,7 @@ METRICS: tuple[Metric, ...] = (
         "high_overlap",
         "Heavy cross-talk",
         "Whether overlapping speech passes 15 percent of the file.",
-        "Run source separation or multi-channel diarisation before "
-        "transcribing.",
+        "Run source separation or multi-channel diarisation before transcribing.",
         FROM_NOTES,
         true_label="heavy",
         false_label="within limits",
@@ -1020,8 +1010,7 @@ METRICS: tuple[Metric, ...] = (
         "voiced_fraction",
         "Pitch found in this much speech",
         "",
-        "The share of detected speech where a pitch could actually be "
-        "measured.",
+        "The share of detected speech where a pitch could actually be measured.",
         "Consonants have no pitch, so this is never 1. But a low figure means "
         "the tracker struggled, and the pitch numbers above are then weak "
         "evidence.",
@@ -1068,8 +1057,7 @@ METRICS: tuple[Metric, ...] = (
         "f0",
         "high_pitch",
         "High-pitched voice",
-        "Whether the median pitch is above the point where error rates start "
-        "climbing.",
+        "Whether the median pitch is above the point where error rates start climbing.",
         "Prefer an engine with broader pitch coverage than adult read speech.",
         FROM_NOTES,
         true_label="high",
@@ -1177,6 +1165,7 @@ def format_value(metric: Metric, value: Any) -> str:
 
 
 # ------------------------------------------------------------------- the plots
+
 
 @dataclass(frozen=True)
 class PlotGuide:
