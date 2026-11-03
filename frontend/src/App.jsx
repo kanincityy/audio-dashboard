@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 
+const MAIN_KEY = { snr: "snr_db", rt60: "rt60_s", vad: "segment_count" };
+const UNIT = { snr: "dB", rt60: "s", vad: "segments" }
+
+function MetricCard({ name, value, unit }) {
+  return (
+    <li>
+      <strong>{name}</strong>: {value} {unit}
+    </li>
+  );
+}
+
 function AnalysisCheckbox({ analysis, onToggle }) {
   return (
     <li>
@@ -88,6 +99,13 @@ function App() {
           <p>
             {run.completed} / {run.total} {run.status}
           </p>
+          {run.status === "done" && (
+            <ul>
+              {Object.entries(run.results).map(([name, result]) => (
+                <MetricCard key={name} name={name} value={result[MAIN_KEY[name]]} unit={UNIT[name]} />
+              ))}
+            </ul>
+          )}
         </div>
       )}
       <ul>
@@ -95,7 +113,7 @@ function App() {
           <AnalysisCheckbox key={a.name} analysis={a} onToggle={toggle} />
         ))}
       </ul>
-    </div>
+    </div >
   );
 }
 
