@@ -1,13 +1,42 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 
-const MAIN_KEY = { snr: "snr_db", rt60: "rt60_s", vad: "segment_count" };
-const UNIT = { snr: "dB", rt60: "s", vad: "segments" }
+const MAIN_KEY = {
+  format: "sample_rate_khz",
+  transcript: "overall_confidence",
+  levels: "peak_dbfs",
+  clipping: "clipped_sample_pct",
+  bandwidth: "effective_cutoff_khz",
+  vad: "segment_count",
+  snr: "snr_db",
+  rt60: "rt60_s",
+  density: "speech_ratio",
+  truncation: "word_count",
+  tempo: "wpm",
+  overlap: "overlap_seconds",
+  speakers: "speaker_count",
+  f0: "f0_median_hz",
+};
+const UNIT = {
+  format: "kHz",
+  levels: "dBFS",
+  clipping: "%",
+  bandwidth: "kHz",
+  vad: "segments",
+  snr: "dB",
+  rt60: "s",
+  truncation: "words",
+  tempo: "words/min",
+  overlap: "s",
+  speakers: "speakers",
+  f0: "Hz",
+};
 
 function MetricCard({ name, value, unit }) {
+  const measured = value !== null && value !== undefined;
   return (
     <li className="metric-card">
-      <strong>{name}</strong>: {value} {unit}
+      <strong>{name}</strong>: {measured ? `${value} ${unit ?? ""}` : "not measured"}
     </li>
   );
 }
@@ -99,10 +128,11 @@ function App() {
           <p>
             {run.completed} / {run.total} {run.status}
           </p>
+          {run.status === "failed" && <p>{run.error}</p>}
           {run.status === "done" && (
             <ul>
               {Object.entries(run.results).map(([name, result]) => (
-                <MetricCard key={name} name={name} value={result[MAIN_KEY[name]]} unit={UNIT[name]} />
+                <MetricCard key={name} name={name} value={result.usable === false ? null : result[MAIN_KEY[name]]} unit={UNIT[name]} />
               ))}
             </ul>
           )}
