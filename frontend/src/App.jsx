@@ -6,7 +6,7 @@ const UNIT = { snr: "dB", rt60: "s", vad: "segments" }
 
 function MetricCard({ name, value, unit }) {
   return (
-    <li>
+    <li className="metric-card">
       <strong>{name}</strong>: {value} {unit}
     </li>
   );
