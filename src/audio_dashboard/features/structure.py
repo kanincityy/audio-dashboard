@@ -78,6 +78,8 @@ def vad(bundle: AudioBundle, results: dict[str, Any]) -> dict[str, Any]:
 
 def density(bundle: AudioBundle, results: dict[str, Any]) -> dict[str, Any]:
     """How much of the file is speech, and where the silence sits."""
+    if "vad" not in results:
+        return {"usable": False, "reason": "needs VAD"}
     v = results.get("vad") or {}
     spans = v.get("speech_spans") or []
     duration = bundle.duration
@@ -127,6 +129,8 @@ def truncation(bundle: AudioBundle, results: dict[str, Any]) -> dict[str, Any]:
     in the list, so it is worth flagging loudly even though the check is
     trivial: speech that touches either end of the file was probably cut.
     """
+    if "vad" not in results:
+        return {"usable": False, "reason": "needs VAD"}
     v = results.get("vad") or {}
     spans = v.get("speech_spans") or []
     tr = results.get("transcript") or {}
@@ -146,7 +150,10 @@ def truncation(bundle: AudioBundle, results: dict[str, Any]) -> dict[str, Any]:
         "word_count": word_count if tr else None,
         "few_words": few_words if tr else None,
         "hallucination_risk": bool(
-            bundle.duration < SHORT_FILE_S or starts_at_edge or ends_at_edge or few_words
+            bundle.duration < SHORT_FILE_S
+            or starts_at_edge
+            or ends_at_edge
+            or few_words
         ),
     }
 

@@ -19,8 +19,8 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from audio_dashboard.audio_io import AudioBundle  # noqa: E402
-from audio_dashboard.features import structure  # noqa: E402
+from audio_dashboard.audio_io import AudioBundle
+from audio_dashboard.features import structure
 
 
 def bundle(duration: float = 10.0, *, stereo: bool = False) -> AudioBundle:
@@ -80,7 +80,9 @@ def test_a_mono_zero_cannot_be_read_as_a_pass():
     from audio_dashboard import interpret
 
     results = {"overlap": structure.overlap(bundle(), transcript([(0.0, 4.0, "A")]))}
-    ratio = next(m for m in interpret.BY_ANALYSIS["overlap"] if m.key == "overlap_ratio")
+    ratio = next(
+        m for m in interpret.BY_ANALYSIS["overlap"] if m.key == "overlap_ratio"
+    )
     assert interpret.read(results, ratio)[1] == interpret.UNKNOWN
 
 
@@ -89,3 +91,22 @@ def test_unattributed_speech_counts_only_what_no_utterance_covers():
     results["vad"] = {"speech_spans": [[0.0, 4.0], [6.0, 8.0]]}
     out = structure.overlap(bundle(), results)
     assert out["unattributed_speech_s"] == 2.0
+
+
+# ----------------------------------------------------- VAD never run
+
+
+def test_density_declines_when_vad_was_not_run():
+    class Clip:
+        duration = 10.0
+
+    result = structure.density(Clip(), {})
+    assert result["usable"] is False
+
+
+def test_truncation_declines_when_vad_was_not_run():
+    class Clip:
+        duration = 10.0
+
+    result = structure.truncation(Clip(), {})
+    assert result["usable"] is False

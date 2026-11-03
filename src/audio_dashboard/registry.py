@@ -82,6 +82,7 @@ ANALYSES: list[Analysis] = [
         label="Levels and dynamic range",
         fn=quality.levels,
         note="Peak and RMS dBFS, crest factor, dynamic range.",
+        version=2,
     ),
     Analysis(
         name="clipping",
@@ -113,6 +114,7 @@ ANALYSES: list[Analysis] = [
         fn=quality.snr,
         note="Speech level against noise floor. Far better with VAD selected.",
         prefers=("vad",),
+        version=2,
     ),
     Analysis(
         name="rt60",
@@ -122,6 +124,7 @@ ANALYSES: list[Analysis] = [
         note="Blind estimate from decay after speech offsets. Approximate.",
         requires=("vad",),
         cost="slow",
+        version=2,
     ),
     Analysis(
         name="density",
@@ -130,6 +133,7 @@ ANALYSES: list[Analysis] = [
         fn=structure.density,
         note="Speech-to-silence ratio, gaps, leading and trailing silence.",
         requires=("vad",),
+        version=2,
     ),
     Analysis(
         name="truncation",
@@ -139,6 +143,7 @@ ANALYSES: list[Analysis] = [
         note="Flags short files and speech touching either end of the file.",
         requires=("vad",),
         prefers=("transcript",),
+        version=2,
     ),
     Analysis(
         name="tempo",

@@ -27,9 +27,7 @@ origins = [
     "http://localhost:5173",
 ]
 
-app.add_middleware(
-    CORSMiddleware, allow_origins=origins, allow_methods=["*"]
-)
+app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["*"])
 
 
 @app.get("/health")

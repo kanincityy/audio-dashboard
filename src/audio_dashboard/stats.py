@@ -179,12 +179,14 @@ def boundary_confidence(
         return {"count": 0, "boundaries": []}
 
     at = [all_words[k]["confidence"] for k in sorted(boundary_idx)]
-    away = [
-        w["confidence"] for k, w in enumerate(all_words) if k not in boundary_idx
-    ]
+    away = [w["confidence"] for k, w in enumerate(all_words) if k not in boundary_idx]
 
     def pct_below(values: list[float]) -> float:
-        return 100.0 * sum(1 for c in values if c < threshold) / len(values) if values else 0.0
+        return (
+            100.0 * sum(1 for c in values if c < threshold) / len(values)
+            if values
+            else 0.0
+        )
 
     boundary_mean = statistics.fmean(at)
     other_mean = statistics.fmean(away) if away else boundary_mean
@@ -230,7 +232,12 @@ def confidence_timeline(
     words = transcript.get("words", [])
     duration = transcript.get("audio_duration", 0.0)
     if not words or duration <= 0 or bin_seconds <= 0:
-        return {"bin_seconds": bin_seconds, "duration": duration, "bins": [], "series": {}}
+        return {
+            "bin_seconds": bin_seconds,
+            "duration": duration,
+            "bins": [],
+            "series": {},
+        }
 
     n_bins = max(1, int(duration // bin_seconds) + 1)
     speakers = sorted({w["speaker"] for w in words})
@@ -325,7 +332,9 @@ def summarise(
         "speaker_gap": speaker_gap,
         "turn_count": len(utterances),
         "short_turns": short_turns,
-        "pct_short_turns": (100.0 * short_turns / len(utterances)) if utterances else 0.0,
+        "pct_short_turns": (100.0 * short_turns / len(utterances))
+        if utterances
+        else 0.0,
     }
 
 

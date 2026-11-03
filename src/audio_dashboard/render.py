@@ -97,7 +97,9 @@ def build_timeline_svg(
     plot_w = x1 - x0
     plot_h = y1 - y0
 
-    values = [v for series in timeline["series"].values() for v in series if v is not None]
+    values = [
+        v for series in timeline["series"].values() for v in series if v is not None
+    ]
     y_max = _nice_ceil(max(values) if values else 0.0)
 
     def sx(t: float) -> float:
@@ -182,7 +184,7 @@ def build_timeline_svg(
 
     return (
         f'<div class="tl-head"><span class="tl-title">% words below '
-        f'{max(0.0, timeline.get("threshold", 0)):.2f}</span>{mark_key}{legend}</div>'
+        f"{max(0.0, timeline.get('threshold', 0)):.2f}</span>{mark_key}{legend}</div>"
         f'<svg id="tl" viewBox="0 0 {TL_W:.0f} {TL_H:.0f}" preserveAspectRatio="none" '
         f'data-x0="{x0}" data-x1="{x1}" data-dur="{duration}">'
         f"{''.join(parts)}"

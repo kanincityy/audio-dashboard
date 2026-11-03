@@ -34,7 +34,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from audio_dashboard import asr, audio_io, cache, registry  # noqa: E402
+from audio_dashboard import asr, audio_io, cache, registry
 
 CORPUS = Path(os.environ.get("AUDIO_CORPUS_SYNTHETIC", "")).expanduser()
 
@@ -87,7 +87,8 @@ def report(title: str, rows: list[dict], columns: list[tuple[str, str]]) -> None
         print(
             "  "
             + "  ".join(
-                f"{row.get(key, ''):>{widths[key]}}" if isinstance(row.get(key), str)
+                f"{row.get(key, ''):>{widths[key]}}"
+                if isinstance(row.get(key), str)
                 else f"{row.get(key, float('nan')):>{widths[key]}.2f}"
                 for key, _ in columns
             )
@@ -130,7 +131,12 @@ def validate_snr() -> None:
     report(
         "SNR — measured against the ratio the noise was added at",
         rows,
-        [("file", "file"), ("expected", "true dB"), ("measured", "measured"), ("error", "error")],
+        [
+            ("file", "file"),
+            ("expected", "true dB"),
+            ("measured", "measured"),
+            ("error", "error"),
+        ],
     )
     print(f"\n  {skipped} file(s) missing.")
     for variant, values in sorted(errors.items()):

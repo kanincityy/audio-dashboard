@@ -44,8 +44,19 @@ CLIFF_SEARCH_START_HZ = 1500.0
 # multiplied up to a full 60 dB of decay.
 DECAY_START_DB = -5.0
 DECAY_END_DB = -25.0
+# The fit runs down to DECAY_END_DB, so the raw signal has to fall at least
+# that far inside the window. Backward integration turns a steady noise floor
+# into a smooth ramp that fits just as well as a real decay, so this is checked
+# on the signal itself, before any integration.
+MIN_VISIBLE_DECAY_DB = abs(DECAY_END_DB)
 MIN_DECAY_WINDOW_S = 0.15
 MAX_DECAY_WINDOW_S = 1.5
+
+# Below this a frame is digital silence (exact zeros from padding or editing),
+# not a quiet room. It has no noise floor to measure, and dB of it would be the
+# arbitrary -240 that _EPS produces, so such frames are left out of any ratio.
+SILENCE_FLOOR_DBFS = -90.0
+SILENCE_FLOOR = 10.0 ** (SILENCE_FLOOR_DBFS / 20.0)
 
 _EPS = 1e-12
 
@@ -89,20 +100,34 @@ def levels(bundle: AudioBundle, results) -> dict:
     # Dynamic range as the spread of frame loudness rather than peak-to-noise:
     # the 95th percentile is a loud moment of speech, the 10th is the quiet
     # background, and the gap between them is what a normaliser would close.
-    loud = float(np.percentile(rms, 95)) if len(rms) else 0.0
-    quiet = float(np.percentile(rms, 10)) if len(rms) else 0.0
+    # Digitally silent frames are not "quiet background", so they are left out;
+    # counting them reported a 230 dB range on any zero-padded file.
+    active = rms[rms > SILENCE_FLOOR]
+    if len(active):
+        loud = float(np.percentile(active, 95))
+        quiet = float(np.percentile(active, 10))
+        range_db = float(_db(loud) - _db(quiet))
+        loud_db, quiet_db = float(_db(loud)), float(_db(quiet))
+    else:
+        range_db = loud_db = quiet_db = None
 
     return {
         "peak_dbfs": float(_db(peak)),
         "rms_dbfs": float(_db(overall_rms)),
         "crest_factor_db": float(_db(peak) - _db(overall_rms)),
-        "dynamic_range_db": float(_db(loud) - _db(quiet)),
-        "loud_frame_dbfs": float(_db(loud)),
-        "quiet_frame_dbfs": float(_db(quiet)),
+        "dynamic_range_db": range_db,
+        "loud_frame_dbfs": loud_db,
+        "quiet_frame_dbfs": quiet_db,
     }
 
 
 def clipping(bundle: AudioBundle, results) -> dict:
+    """Samples at full scale, and flat runs of them.
+
+    The ceiling is fixed at CLIP_CEILING, so audio that was clipped and then
+    turned down afterwards shows no clipping here even though its peaks are
+    flat. Samples are compared by absolute value, so a run may mix both signs.
+    """
     samples = bundle.samples
     if not len(samples):
         return {
@@ -160,7 +185,9 @@ def snr(bundle: AudioBundle, results) -> dict:
     if spans:
         mask = _speech_mask(spans, times, frame_s)
         speech_frames = rms[mask]
+        # Digital silence is not a noise floor; see SILENCE_FLOOR_DBFS.
         noise_frames = rms[~mask]
+        noise_frames = noise_frames[noise_frames > SILENCE_FLOOR]
         method = "vad"
     else:
         speech_frames = noise_frames = np.zeros(0)
@@ -174,14 +201,27 @@ def snr(bundle: AudioBundle, results) -> dict:
             "snr_db": None,
             "method": "vad",
             "usable": False,
-            "reason": "not enough speech or non-speech frames to compare",
-            "speech_frames": int(len(speech_frames)),
-            "noise_frames": int(len(noise_frames)),
+            "reason": (
+                "not enough speech or non-speech frames to compare "
+                "(digital silence does not count as noise)"
+            ),
+            "speech_frames": len(speech_frames),
+            "noise_frames": len(noise_frames),
         }
 
     if method == "percentile":
         speech_level = float(np.percentile(rms, 90))
         noise_level = float(np.percentile(rms, 10))
+        if noise_level <= SILENCE_FLOOR:
+            return {
+                "snr_db": None,
+                "method": "percentile",
+                "usable": False,
+                "reason": (
+                    "the quietest frames are digital silence, so there is no "
+                    "noise floor to compare against"
+                ),
+            }
     else:
         speech_level = float(np.sqrt(np.mean(speech_frames.astype(np.float64) ** 2)))
         noise_level = float(np.sqrt(np.mean(noise_frames.astype(np.float64) ** 2)))
@@ -192,8 +232,8 @@ def snr(bundle: AudioBundle, results) -> dict:
         "usable": True,
         "speech_level_dbfs": round(float(_db(speech_level)), 2),
         "noise_floor_dbfs": round(float(_db(noise_level)), 2),
-        "speech_frames": int(len(speech_frames)) if method == "vad" else None,
-        "noise_frames": int(len(noise_frames)) if method == "vad" else None,
+        "speech_frames": len(speech_frames) if method == "vad" else None,
+        "noise_frames": len(noise_frames) if method == "vad" else None,
     }
 
 
@@ -295,6 +335,15 @@ def rt60(bundle: AudioBundle, results) -> dict:
         if len(segment) < 64:
             continue
 
+        # A window whose loudness never falls holds no decay to measure, only
+        # a noise floor. Compare the first frame with the last few.
+        frame_rms, _ = _frame_rms(segment, sr, frame_ms=10.0)
+        if len(frame_rms) < 4:
+            continue
+        visible_drop = float(_db(frame_rms[0]) - _db(np.median(frame_rms[-3:])))
+        if visible_drop < MIN_VISIBLE_DECAY_DB:
+            continue
+
         # Schroeder: energy remaining from each point to the end of the window.
         energy = segment**2
         remaining = np.cumsum(energy[::-1])[::-1]
@@ -334,7 +383,7 @@ def rt60(bundle: AudioBundle, results) -> dict:
         "rt60_iqr_s": round(
             float(np.percentile(values, 75) - np.percentile(values, 25)), 3
         ),
-        "windows": int(len(values)),
+        "windows": len(values),
         "far_field": bool(np.median(values) > 0.8),
         "fit_region_db": [DECAY_START_DB, DECAY_END_DB],
     }

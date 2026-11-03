@@ -16,8 +16,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from audio_dashboard.audio_io import AudioBundle  # noqa: E402
-from audio_dashboard.features import quality  # noqa: E402
+from audio_dashboard.audio_io import AudioBundle
+from audio_dashboard.features import quality
 
 SR = 16_000
 
@@ -34,7 +34,9 @@ def bundle(samples: np.ndarray, sr: int = SR) -> AudioBundle:
     )
 
 
-def sine(freq: float, seconds: float, amplitude: float = 1.0, sr: int = SR) -> np.ndarray:
+def sine(
+    freq: float, seconds: float, amplitude: float = 1.0, sr: int = SR
+) -> np.ndarray:
     t = np.arange(int(seconds * sr)) / sr
     return amplitude * np.sin(2 * np.pi * freq * t)
 
@@ -243,3 +245,48 @@ def test_rt60_reports_no_usable_windows_when_speech_never_stops():
     result = quality.rt60(bundle(samples), {"vad": {"speech_spans": spans}})
     assert result["usable"] is False
     assert result["windows"] == 0
+
+
+# ------------------------------------------------------- digital silence
+
+
+def zero_padded_speech():
+    """Two seconds of speech with digital silence either side."""
+    pad = np.zeros(2 * SR)
+    return np.concatenate([pad, speech_like(2.0), pad]), [[2.0, 4.0]]
+
+
+def test_snr_declines_when_the_only_noise_is_digital_silence():
+    """Exact zeros are not a noise floor, so there is no SNR to report."""
+    samples, spans = zero_padded_speech()
+    result = quality.snr(bundle(samples), {"vad": {"speech_spans": spans}})
+    assert result["usable"] is False
+    assert result["snr_db"] is None
+
+
+def test_percentile_snr_ignores_digital_silence():
+    samples, _ = zero_padded_speech()
+    result = quality.snr(bundle(samples), {})
+    assert result["usable"] is False
+
+
+def test_levels_dynamic_range_ignores_digital_silence():
+    samples, _ = zero_padded_speech()
+    result = quality.levels(bundle(samples), {})
+    assert result["dynamic_range_db"] < 60
+
+
+def test_levels_dynamic_range_is_none_for_pure_silence():
+    result = quality.levels(bundle(np.zeros(SR)), {})
+    assert result["dynamic_range_db"] is None
+
+
+# ---------------------------------------------------- rt60 vs noise floor
+
+
+def test_rt60_does_not_mistake_a_steady_noise_floor_for_reverberation():
+    """A gap of plain noise has no decay in it, whatever the fit says."""
+    rng = np.random.default_rng(0)
+    samples = np.concatenate([speech_like(1.0), rng.normal(0, 0.01, SR)])
+    result = quality.rt60(bundle(samples), {"vad": {"speech_spans": [[0.0, 1.0]]}})
+    assert result["usable"] is False

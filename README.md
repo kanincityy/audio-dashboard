@@ -84,7 +84,10 @@ else is computed from the decoded signal and carries some uncertainty:
 - **SNR** is a real measurement when voice activity detection is also selected
   — speech-frame level against non-speech-frame level. Without it, it falls
   back to a percentile split of frame energy, which is a guess. The result's
-  `method` field says which one produced the number.
+  `method` field says which one produced the number. Frames of digital silence
+  (exact zeros from padding or editing) do not count as noise: with no real
+  noise floor to compare against, the result says so instead of reporting an
+  enormous SNR.
 - **RT60** is a blind estimate. There is no impulse response, so it fits a
   decay to the tail after each speech offset and extrapolates from 20 dB to
   60 dB. With few usable windows it means very little, so the window count is
