@@ -11,13 +11,23 @@ them. That question is what this answers.
 
 ## Running it
 
+You need two terminals. The first one runs the API from the repo root.
+
 ```bash
 uv sync
 uv run uvicorn audio_dashboard.api.main:app --reload
 ```
 
-Then open http://127.0.0.1:8000/docs to try every endpoint from the browser.
-A React front end is planned; until then, the API is the way in.
+The second one runs the front end from the `frontend` folder.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Then open http://localhost:5173 to use the dashboard. You can also open
+http://127.0.0.1:8000/docs to try every API endpoint from the browser.
 
 Transcription needs API keys in a `.env`:
 
@@ -34,8 +44,16 @@ Everything except transcription works without them.
 |---|---|
 | `GET /v1/analyses` | Lists every analysis, its group, what it requires and what it costs. |
 | `POST /v1/files` | Uploads audio. Returns the file's content hash (`digest`): 201 when new, 200 when the same bytes were uploaded before. |
-| `POST /v1/files/{digest}/runs` | Runs the chosen analyses. Returns 201 with a `run_id` and a `Location` pointing at the results. |
-| `GET /v1/runs/{run_id}` | The results of one run. |
+| `POST /v1/files/{digest}/runs` | Starts the chosen analyses in the background. Returns 202 with a `run_id` and a `Location` pointing at the run. |
+| `GET /v1/runs/{run_id}` | The status of one run (`queued`, `running`, `done` or `failed`), how far it has got, and its results once it is done. |
+| `GET /v1/files/{digest}/runs` | Every run made for one file, newest first. |
+| `GET /v1/files/{digest}/waveform` | The loudest and quietest value in each slice of the file, for drawing the waveform. The `points` query value sets how many slices (the default is 4000). |
+| `GET /v1/files/{digest}/audio` | The uploaded file itself, so a browser can play it. |
+
+A run does not block the request. The client starts it, then asks for the run
+every second until the status is `done` or `failed`. A run that was still going
+when the server restarted is marked `failed`, so a client never waits for it
+forever. Runs are stored in a SQLite file at `data/runs.db`.
 
 Choosing an analysis pulls in whatever it depends on, and the run response
 lists everything that actually ran. A run that would transcribe a file with no
@@ -50,6 +68,24 @@ file is only ever billed once.
 "We measured no reverberation problem" and "we did not measure reverberation"
 must never look the same. An analysis that could not produce a usable number
 says so, and that distinction is kept all the way through.
+
+## The front end
+
+The front end is a React page in `frontend/`, built with Vite. You choose a
+file, upload it, tick the analyses you want and press Run. A progress bar shows
+how many analyses have finished. When the run is done, each analysis shows its
+main number as a card, and "not measured" when it could not produce one.
+
+Under the audio player there are three charts, all drawn as plain SVG.
+
+- **Waveform.** The loudness of the file over time. Green bands mark where voice
+  activity detection found speech, and red lines mark where the waveform is
+  clipped. The green bands need the `vad` analysis and the red lines need the
+  `clipping` analysis.
+- **Spectrum.** How much energy the file has at each frequency, with a dashed
+  line at the detected cutoff. It needs the `bandwidth` analysis.
+- **Pitch.** The pitch of the voice over time, with a dashed line at the median.
+  It needs the `f0` analysis.
 
 ## Reading the numbers
 
@@ -116,7 +152,12 @@ are picked up as hits.
 
 ```bash
 uv run pytest
+cd frontend && npm run lint && npm run build
 ```
+
+The same checks run on every push and pull request through GitHub Actions. The
+backend job runs `ruff` and `pytest`, and the front end job runs the linter and
+the build.
 
 No test calls an API — the transcript tests run only against a file already in
 the cache, and skip otherwise. The quality extractors are checked against signals whose
@@ -126,3 +167,7 @@ ratio. The API is tested end to end with FastAPI's `TestClient`, against a
 temporary upload folder, with the paid transcription call replaced so a broken
 billing check fails the test instead of spending money. One test uses a local
 corpus of constructed files if it happens to be present, and skips otherwise.
+
+## Licence
+
+This project is released under the MIT licence. The full text is in `LICENSE`.
