@@ -123,6 +123,12 @@ function App() {
     }
   }
 
+  // Seconds to pixels: the drawing is 800 wide and the file lasts duration_s.
+  const pxPerSecond = wave ? 800 / wave.duration_s : 0;
+  const results = (run && run.results) || {};
+  const speechSpans = (results.vad && results.vad.speech_spans) || [];
+  const clipPositions = (results.clipping && results.clipping.run_positions_s) || [];
+
   return (
     <div>
       <h1>Audio dashboard: {selected.length} selected</h1>
@@ -131,6 +137,17 @@ function App() {
       <button onClick={upload}>Upload</button>
       <p>{digest && digest}</p>
       <svg width="800" height="100">
+        {wave && speechSpans.map(([start, end]) => (
+          <rect
+            key={start}
+            x={start * pxPerSecond}
+            y="0"
+            width={(end - start) * pxPerSecond}
+            height="100"
+            fill="green"
+            opacity="0.2"
+          />
+        ))}
         {wave && wave.max.map((maxValue, index) => (
           <line
             key={index}
@@ -140,7 +157,21 @@ function App() {
             y2={toY(wave.min[index])}
             stroke="blue"
           />))}
+        {wave && clipPositions.map((t) => (
+          <line
+            key={t}
+            x1={t * pxPerSecond}
+            x2={t * pxPerSecond}
+            y1="0"
+            y2="100"
+            stroke="red"
+            opacity="0.6"
+          />
+        ))}
       </svg>
+      {digest && (
+        <audio controls src={`http://localhost:8000/v1/files/${digest}/audio`} />
+      )}
       <button onClick={startRun}>Run</button>
       <p>{error}</p>
       <p>{runId}</p>
