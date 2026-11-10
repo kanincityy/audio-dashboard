@@ -196,6 +196,9 @@ function App() {
       <p>{file && file.name}</p>
       <button onClick={upload}>Upload</button>
       <p>{digest && digest}</p>
+      {digest && (
+        <audio controls src={`http://localhost:8000/v1/files/${digest}/audio`} />
+      )}
       <svg width="800" height="100">
         {wave && speechSpans.map(([start, end]) => (
           <rect
@@ -229,7 +232,13 @@ function App() {
           />
         ))}
       </svg>
-      
+      {results.bandwidth && results.bandwidth.usable && (
+        <SpectrumChart band={results.bandwidth} />
+      )}
+      {wave && results.f0 && results.f0.usable && (
+        <PitchChart pitch={results.f0} duration={wave.duration_s} />
+      )}
+
       <button onClick={startRun}>Run</button>
       <p>{error}</p>
       <p>{runId}</p>
