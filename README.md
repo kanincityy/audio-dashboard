@@ -3,12 +3,6 @@
 A tool for looking at an audio file and the transcript it produced, side by
 side with the acoustic measurements that might explain the errors in it.
 
-This is a feasibility probe. The eventual goal is automatic routing to the
-right ASR model and pre-processing chain, but before building that we need to
-know whether the signals in `notes.md` are actually extractable from real
-audio, reliable enough to act on, and interpretable by a person looking at
-them. That question is what this answers.
-
 ![The dashboard after a finished run, with the audio player, waveform, spectrum, pitch chart and metric cards](docs/dashboard.png)
 
 ## Running it
