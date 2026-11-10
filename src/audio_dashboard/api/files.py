@@ -1,17 +1,32 @@
 import hashlib
+import mimetypes
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Response, UploadFile
+from fastapi import APIRouter, HTTPException, Query, Response, UploadFile
+from fastapi.responses import FileResponse
 
-from audio_dashboard import audio_io
+from audio_dashboard import audio_io, waveform
 
-from .schemas import FileOut
+from .schemas import FileOut, WaveformOut
 
 UPLOAD_DIR = Path(__file__).resolve().parents[3] / "uploads"
 MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 
 
 router = APIRouter(prefix="/v1")
+
+
+def require_upload(digest: str) -> list[Path]:
+    """The stored files for a digest, or a 404 that says how to get one."""
+    matches = list(UPLOAD_DIR.glob(f"{digest}.*"))
+    if not matches:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"No uploaded file with digest {digest}. Upload it with POST /v1/files first."
+            ),
+        )
+    return matches
 
 
 def _reject_if_too_large(size_bytes: int) -> None:
@@ -56,3 +71,26 @@ async def upload_file(file: UploadFile, response: Response):
         dest.write_bytes(data)
     response.status_code = 200 if existed else 201
     return FileOut(digest=digest, size_bytes=len(data), filename=file.filename)
+
+
+@router.get("/files/{digest}/audio")
+def get_audio(digest: str):
+    """The uploaded audio itself, for a browser <audio> element."""
+    path = require_upload(digest)[0]
+    media_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    return FileResponse(path, media_type=media_type)
+
+
+@router.get("/files/{digest}/waveform", response_model=WaveformOut)
+def get_waveform(digest: str, points: int = Query(4000, ge=10, le=20000)):
+    """Min and max per bucket, enough to draw the waveform chart."""
+    path = require_upload(digest)[0]
+    try:
+        bundle = audio_io.load(path)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Could not decode this file ({type(exc).__name__}).",
+        ) from exc
+    outline = waveform.envelope(bundle.samples, points)
+    return WaveformOut(duration_s=bundle.duration, sample_rate=bundle.sr, **outline)

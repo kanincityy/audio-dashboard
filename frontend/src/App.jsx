@@ -41,6 +41,10 @@ function MetricCard({ name, value, unit }) {
   );
 }
 
+function toY(amplitude) {
+  return 50 - amplitude * 50;
+}
+
 function AnalysisCheckbox({ analysis, onToggle }) {
   return (
     <li>
@@ -60,6 +64,7 @@ function App() {
   const [error, setError] = useState(null)
   const [runId, setRunId] = useState(null)
   const [run, setRun] = useState(null)
+  const [wave, setWave] = useState(null)
   useEffect(() => {
     fetch("http://localhost:8000/v1/analyses")
       .then((response) => response.json())
@@ -79,6 +84,12 @@ function App() {
     }, 1000);
     return () => clearInterval(timer);
   }, [runId]);
+  useEffect(() => {
+    if (!digest) return;
+    fetch(`http://localhost:8000/v1/files/${digest}/waveform`)
+      .then((response) => response.json())
+      .then((data) => setWave(data))
+  }, [digest]);
   function toggle(name) {
     if (selected.includes(name)) {
       setSelected(selected.filter((n) => n !== name));
@@ -119,6 +130,17 @@ function App() {
       <p>{file && file.name}</p>
       <button onClick={upload}>Upload</button>
       <p>{digest && digest}</p>
+      <svg width="800" height="100">
+        {wave && wave.max.map((maxValue, index) => (
+          <line
+            key={index}
+            x1={index * (800 / wave.points)}
+            x2={index * (800 / wave.points)}
+            y1={toY(maxValue)}
+            y2={toY(wave.min[index])}
+            stroke="blue"
+          />))}
+      </svg>
       <button onClick={startRun}>Run</button>
       <p>{error}</p>
       <p>{runId}</p>
