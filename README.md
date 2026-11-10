@@ -9,6 +9,8 @@ know whether the signals in `notes.md` are actually extractable from real
 audio, reliable enough to act on, and interpretable by a person looking at
 them. That question is what this answers.
 
+![The dashboard after a finished run, with the audio player, waveform, spectrum, pitch chart and metric cards](docs/dashboard.png)
+
 ## Running it
 
 You need two terminals. The first one runs the API from the repo root.
@@ -75,6 +77,8 @@ The front end is a React page in `frontend/`, built with Vite. You choose a
 file, upload it, tick the analyses you want and press Run. A progress bar shows
 how many analyses have finished. When the run is done, each analysis shows its
 main number as a card, and "not measured" when it could not produce one.
+
+![The metric cards after a run, including one that says not measured](docs/cards.png)
 
 Under the audio player there are three charts, all drawn as plain SVG.
 
