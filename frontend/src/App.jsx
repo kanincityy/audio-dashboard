@@ -105,6 +105,14 @@ function PitchChart({ pitch, duration }) {
   );
 }
 
+// The API reports an error as detail, either a plain string or, for a badly
+// formed request, a list of problems.
+function errorMessage(data) {
+  if (typeof data.detail === "string") return data.detail;
+  if (Array.isArray(data.detail) && data.detail.length > 0) return data.detail[0].msg;
+  return "Something went wrong.";
+}
+
 function AnalysisCheckbox({ analysis, onToggle }) {
   return (
     <li>
@@ -157,29 +165,53 @@ function App() {
       setSelected([...selected, name]);
     }
   }
-  function upload() {
+  async function upload() {
+    if (!file) {
+      setError("Choose a file first.");
+      return;
+    }
     const form = new FormData();
     form.append("file", file);
-    fetch("http://localhost:8000/v1/files", { method: "POST", body: form })
-      .then((response) => response.json()).then((data) => setDigest(data.digest))
+    try {
+      const response = await fetch("http://localhost:8000/v1/files", {
+        method: "POST",
+        body: form,
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(errorMessage(data));
+        return;
+      }
+      // A new file starts a new session, so the old run is cleared.
+      setError(null);
+      setRun(null);
+      setRunId(null);
+      setDigest(data.digest);
+    } catch {
+      setError("Could not reach the server. Is the API running?");
+    }
   }
   async function startRun() {
-    const response = await
-      fetch(`http://localhost:8000/v1/files/${digest}/runs`, {
+    if (!digest) {
+      setError("Upload a file first.");
+      return;
+    }
+    try {
+      const response = await fetch(`http://localhost:8000/v1/files/${digest}/runs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ analyses: selected }),
-      })
-    const data = await response.json();
-    if (!response.ok) {
-      if (typeof data.detail === "string") {
-        setError(data.detail);
-      } else {
-        setError(data.detail[0].msg);
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(errorMessage(data));
+        return;
       }
-    } else {
       setError(null);
-      setRunId(data.run_id)
+      setRun(null);
+      setRunId(data.run_id);
+    } catch {
+      setError("Could not reach the server. Is the API running?");
     }
   }
 
