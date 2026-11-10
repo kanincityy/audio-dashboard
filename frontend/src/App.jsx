@@ -45,6 +45,66 @@ function toY(amplitude) {
   return 50 - amplitude * 50;
 }
 
+// Map a value in [lo, hi] onto 0..size. Pass size first and a flipped range to
+// invert an axis (SVG's y grows downward).
+function scale(value, lo, hi, size) {
+  return ((value - lo) / (hi - lo || 1)) * size;
+}
+
+function SpectrumChart({ band }) {
+  const freqs = band.spectrum_freqs_hz;
+  const db = band.spectrum_db;
+  const maxFreq = freqs[freqs.length - 1];
+  const lo = Math.min(...db);
+  const hi = Math.max(...db);
+  const points = freqs
+    .map((f, i) => `${scale(f, 0, maxFreq, 800)},${100 - scale(db[i], lo, hi, 100)}`)
+    .join(" ");
+  const cutoffX = scale(band.effective_cutoff_hz, 0, maxFreq, 800);
+  return (
+    <div>
+      <p>
+        Spectrum: where the energy stops (cutoff {band.effective_cutoff_khz} kHz,{" "}
+        {band.cliff_found ? `drop ${band.cliff_drop_db} dB` : "no cliff"})
+      </p>
+      <svg width="800" height="100">
+        <polyline points={points} fill="none" stroke="blue" />
+        <line x1={cutoffX} x2={cutoffX} y1="0" y2="100" stroke="red" strokeDasharray="4" />
+      </svg>
+    </div>
+  );
+}
+
+const PITCH_MIN_HZ = 50;
+const PITCH_MAX_HZ = 500;
+
+function PitchChart({ pitch, duration }) {
+  // A null in the track is an unvoiced frame: lift the pen and start a new
+  // segment so the line breaks instead of joining across the gap.
+  let path = "";
+  let penDown = false;
+  pitch.track_hz.forEach((hz, i) => {
+    if (hz === null) {
+      penDown = false;
+      return;
+    }
+    const x = scale(pitch.track_times_s[i], 0, duration, 800);
+    const y = 100 - scale(hz, PITCH_MIN_HZ, PITCH_MAX_HZ, 100);
+    path += `${penDown ? "L" : "M"}${x},${y} `;
+    penDown = true;
+  });
+  const medianY = 100 - scale(pitch.f0_median_hz, PITCH_MIN_HZ, PITCH_MAX_HZ, 100);
+  return (
+    <div>
+      <p>Pitch over speech (median {pitch.f0_median_hz} Hz)</p>
+      <svg width="800" height="100">
+        <path d={path} fill="none" stroke="purple" />
+        <line x1="0" x2="800" y1={medianY} y2={medianY} stroke="gray" strokeDasharray="4" />
+      </svg>
+    </div>
+  );
+}
+
 function AnalysisCheckbox({ analysis, onToggle }) {
   return (
     <li>
@@ -169,9 +229,7 @@ function App() {
           />
         ))}
       </svg>
-      {digest && (
-        <audio controls src={`http://localhost:8000/v1/files/${digest}/audio`} />
-      )}
+      
       <button onClick={startRun}>Run</button>
       <p>{error}</p>
       <p>{runId}</p>
