@@ -1,9 +1,6 @@
 """A drawable outline of a recording.
 
-Plotting every sample of a ten-minute file helps nobody and is slow. Taking the
-minimum and maximum of each bucket keeps the outline honest where plain
-decimation would hide short transients, including the clipped peaks the
-waveform chart exists to show.
+Take the minimum and maximum of each bucket to show the waveform
 """
 
 from __future__ import annotations
