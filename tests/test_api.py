@@ -7,7 +7,7 @@ import soundfile as sf
 from fastapi.testclient import TestClient
 
 from audio_dashboard import asr, cache
-from audio_dashboard.api import files, runs, store
+from audio_dashboard.api import files, store
 from audio_dashboard.api.main import app
 from audio_dashboard.api.schemas import RunRecord
 
@@ -19,11 +19,9 @@ def isolated(tmp_path, monkeypatch):
     """Point every place the API writes to at this test's own temp folder.
 
     autouse runs it before every test in this file, so no test can forget a
-    patch and leak into the real uploads/, cache or database. runs.py has its
-    own copy of the UPLOAD_DIR name (it imported it), so it is patched too.
+    patch and leak into the real uploads/, cache or database.
     """
     monkeypatch.setattr(files, "UPLOAD_DIR", tmp_path / "uploads")
-    monkeypatch.setattr(runs, "UPLOAD_DIR", tmp_path / "uploads")
     monkeypatch.setattr(cache, "CACHE_DIR", tmp_path / "cache")
     monkeypatch.setattr(store, "DB_PATH", tmp_path / "runs.db")
     store.init_db()
@@ -189,3 +187,44 @@ def test_runs_cut_off_by_a_restart_are_marked_failed():
     assert store.get_run("was-running").status == "failed"
     assert store.get_run("was-queued").status == "failed"
     assert store.get_run("finished").status == "done"
+
+
+def test_waveform_returns_min_and_max_per_point():
+    upload = client.post("/v1/files", files={"file": ("tone.wav", _one_second_tone())})
+    digest = upload.json()["digest"]
+
+    response = client.get(f"/v1/files/{digest}/waveform?points=100")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["points"] == 100
+    assert len(body["min"]) == len(body["max"]) == 100
+    assert body["duration_s"] == pytest.approx(1.0)
+    # A 0.5 amplitude sine: every bucket spans well past zero on both sides.
+    assert max(body["max"]) == pytest.approx(0.5, abs=0.01)
+    assert min(body["min"]) == pytest.approx(-0.5, abs=0.01)
+
+
+def test_waveform_unknown_digest_returns_404():
+    assert client.get("/v1/files/nosuchdigest/waveform").status_code == 404
+
+
+def test_waveform_rejects_an_absurd_point_count():
+    assert client.get("/v1/files/anything/waveform?points=0").status_code == 422
+
+
+def test_audio_returns_the_uploaded_bytes():
+    data = _one_second_tone()
+    digest = client.post("/v1/files", files={"file": ("tone.wav", data)}).json()[
+        "digest"
+    ]
+
+    response = client.get(f"/v1/files/{digest}/audio")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("audio/")
+    assert response.content == data
+
+
+def test_audio_unknown_digest_returns_404():
+    assert client.get("/v1/files/nosuchdigest/audio").status_code == 404

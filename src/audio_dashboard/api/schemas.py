@@ -24,6 +24,16 @@ class FileOut(BaseModel):
     filename: str
 
 
+class WaveformOut(BaseModel):
+    """Outline of a file: point i spans i * duration_s / points onward."""
+
+    duration_s: float
+    sample_rate: int
+    points: int
+    min: list[float]
+    max: list[float]
+
+
 class RunIn(BaseModel):
     analyses: list[str] = Field(min_length=1)
     force: bool = False

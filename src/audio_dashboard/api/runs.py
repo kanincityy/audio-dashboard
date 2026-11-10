@@ -8,7 +8,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Response
 from audio_dashboard import asr, audio_io, registry
 
 from . import store
-from .files import UPLOAD_DIR
+from .files import require_upload
 from .schemas import RunIn, RunOut, RunRecord
 
 logger = logging.getLogger(__name__)
@@ -49,23 +49,11 @@ def _execute_run(path: Path, run_id: str):
     store.save_run(record)
 
 
-def _require_upload(digest: str):
-    matches = list(UPLOAD_DIR.glob(f"{digest}.*"))
-    if not matches:
-        raise HTTPException(
-            status_code=404,
-            detail=(
-                f"No uploaded file with digest {digest}. Upload it with POST /v1/files first."
-            ),
-        )
-    return matches
-
-
 @router.post("/files/{digest}/runs", response_model=RunOut, status_code=202)
 def create_run(
     digest: str, body: RunIn, response: Response, background_tasks: BackgroundTasks
 ):
-    matches = _require_upload(digest)
+    matches = require_upload(digest)
     path = matches[0]
     unknown = [name for name in body.analyses if name not in registry.BY_NAME]
     if unknown:
@@ -119,6 +107,6 @@ def get_run(run_id: str):
 
 @router.get("/files/{digest}/runs", response_model=list[RunRecord], status_code=200)
 def get_runs(digest: str):
-    _require_upload(digest)
+    require_upload(digest)
     records = store.get_runs(digest)
     return records
