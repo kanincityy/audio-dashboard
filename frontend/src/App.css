@@ -191,3 +191,13 @@
   padding: 12px;
   list-style: none;
 }
+/* The player and the charts are inline by default, so they sit side by side.
+   Block puts each on its own row. */
+audio,
+svg {
+  display: block;
+}
+
+audio {
+  margin: 8px 0;
+}
